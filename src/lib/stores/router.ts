@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { ExerciseId } from "@/lib/exercises";
 import type { WorkoutProgram } from "@/lib/data/programs";
 import { PROGRAMS } from "@/lib/data/programs";
@@ -127,27 +127,54 @@ function viewToHash(view: View): string {
   }
 }
 
-export function useHashRoute(): [View, (view: View) => void] {
-  const [view, setView] = useState<View>(() => {
-    if (typeof window === "undefined") return { kind: "landing" };
-    return parseHash(window.location.hash);
-  });
+// ── External store over `window.location.hash` ────────────────────────────
+//
+// The hash is browser-only state, so reading it during render (the old
+// `useState(() => parseHash(location.hash))`) made the client's first render
+// disagree with the server's — a deep link like `#/dashboard` hydrated the
+// server's `landing` tree with a dashboard tree and React threw
+// "Hydration failed because the server rendered HTML didn't match the client".
+//
+// `useSyncExternalStore` is the sanctioned fix: React uses `getServerSnapshot`
+// for both the SSR pass AND the hydration pass, so the trees match, then
+// re-reads the real hash immediately after hydration.
 
-  useEffect(() => {
-    const onHashChange = () => {
-      setView(parseHash(window.location.hash));
-    };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+const listeners = new Set<() => void>();
+
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange);
+  window.addEventListener("hashchange", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("hashchange", onChange);
+  };
+}
+
+function emit() {
+  for (const l of listeners) l();
+}
+
+// Snapshots must be referentially stable across calls, so the store returns
+// the raw hash *string* and the View object is derived (memoized) in the hook.
+function getSnapshot(): string {
+  return window.location.hash;
+}
+
+function getServerSnapshot(): string {
+  return "#/";
+}
+
+export function useHashRoute(): [View, (view: View) => void] {
+  const hash = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const view = useMemo(() => parseHash(hash), [hash]);
 
   const navigate = useCallback((newView: View) => {
-    const hash = viewToHash(newView);
-    if (window.location.hash !== hash) {
-      window.location.hash = hash;
+    const nextHash = viewToHash(newView);
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
     } else {
-      // Same hash — still update state (e.g., program-detail with different program)
-      setView(newView);
+      // Same hash — nudge subscribers so the view still re-resolves.
+      emit();
     }
   }, []);
 

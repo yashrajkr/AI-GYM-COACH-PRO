@@ -11,7 +11,18 @@ const SignupSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(100, "Password is too long"),
-  name: z.string().min(1).max(100).optional(),
+  // The name field is optional in the UI, and an untouched <input> submits as
+  // "" — not `undefined`. `.min(1).optional()` rejected that empty string, so
+  // every signup that skipped the name field 400'd with "Invalid input".
+  // Accept blank/whitespace and normalize it to undefined instead.
+  name: z
+    .string()
+    .max(100)
+    .optional()
+    .transform((v) => {
+      const trimmed = v?.trim();
+      return trimmed ? trimmed : undefined;
+    }),
 });
 
 /**
