@@ -1,0 +1,37 @@
+# Build artifacts
+.next/
+out/
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Environment + secrets
+.env
+.env.*
+!.env.example
+
+# Git + IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Logs + runtime
+*.log
+dev.log
+server.log
+
+# Misc
+README.md
+docs/
+examples/
+mini-services/
+skills/
+.claude/
+.z-ai-config/
+Dockerfile
+Caddyfile
+lighthouserc.json
+db/

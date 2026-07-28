@@ -1,0 +1,42 @@
+{
+  "id": "ai-gym-coach-pro",
+  "name": "AI Gym Coach Pro",
+  "short_name": "GymCoach",
+  "description": "Browser-native AI fitness coach with real-time pose detection and voice coaching",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#050608",
+  "theme_color": "#a3e635",
+  "orientation": "any",
+  "categories": ["fitness", "health", "sports"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "AI Gym Coach Pro dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/#/dashboard",
+      "description": "View your dashboard"
+    },
+    {
+      "name": "Exercise Library",
+      "url": "/#/library",
+      "description": "Browse exercises"
+    }
+  ]
+}

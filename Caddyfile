@@ -1,0 +1,39 @@
+# Caddyfile for AI Gym Coach Pro
+# Caddy listens on :80 (HTTP) and reverse-proxies to the Next.js standalone
+# server on :3000. For production HTTPS, replace `:80` with your domain
+# (e.g. `aigymcoachpro.com`) — Caddy will auto-provision Let's Encrypt certs.
+#
+# SECURITY: The previous version of this file allowed ANY external caller to
+# proxy to ANY localhost port via `?XTransformPort=N`. That handler has been
+# removed — it was a full SSRF bypass of network isolation.
+
+:80 {
+        # Trusted proxy chain — only trust loopback for X-Forwarded-* headers.
+        trusted_proxies 127.0.0.1 ::1
+
+        # Compression
+        encode zstd gzip
+
+        # Access log (JSON for log aggregation)
+        log {
+                output stdout
+                format json
+        }
+
+        # Security headers (Next.js also adds these for app routes; Caddy adds
+        # them for any directly-served static assets).
+        header {
+                X-Content-Type-Options "nosniff"
+                X-Frame-Options "SAMEORIGIN"
+                Referrer-Policy "strict-origin-when-cross-origin"
+                Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+                Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        }
+
+        reverse_proxy localhost:3000 {
+                header_up Host {host}
+                header_up X-Real-IP {remote_host}
+                header_up X-Forwarded-For {remote_host}
+                header_up X-Forwarded-Proto {scheme}
+        }
+}
