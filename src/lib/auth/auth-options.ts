@@ -3,9 +3,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { validateEnv } from "@/lib/env";
+import { validateEnv, isBuildPhase } from "@/lib/env";
 
-// Validate environment on first import (throws in production if missing).
+// Validate environment on first import (throws in production at runtime if
+// missing — never during `next build`, which imports this module to collect
+// page data on a machine that may not hold runtime secrets).
 validateEnv();
 
 // Hard-fail if NEXTAUTH_SECRET is missing — never fall back to a hardcoded
@@ -13,7 +15,10 @@ validateEnv();
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 if (!NEXTAUTH_SECRET) {
   // Allow dev to proceed; validateEnv() already throws in production.
-  if (process.env.NODE_ENV === "production") {
+  // `isBuildPhase()` is the same carve-out as validateEnv's: throwing here
+  // during `next build` produced "Failed to collect page data for
+  // /api/auth/[...nextauth]" and broke every Vercel deploy.
+  if (process.env.NODE_ENV === "production" && !isBuildPhase()) {
     throw new Error(
       "FATAL: NEXTAUTH_SECRET is not set. Generate one with: openssl rand -base64 32"
     );

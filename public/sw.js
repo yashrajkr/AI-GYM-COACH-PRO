@@ -15,7 +15,9 @@
  *   - Never caches /api/auth/* or any POST/PUT/DELETE.
  */
 
-const CACHE_VERSION = "v2"; // bump on deploys that change app shell
+// Bump on deploys that change the app shell. v3 = new app icons; without the
+// bump, returning users keep serving the old precached icons from cache.
+const CACHE_VERSION = "v3";
 const CACHE_NAME = `gym-coach-pro-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -28,6 +30,7 @@ const PRECACHE_ASSETS = [
   "/icon-192.png",
   "/icon-512.png",
   "/apple-touch-icon.png",
+  "/favicon-32.png",
   "/logo.svg",
   "/models/pose_landmarker_lite.task",
   "/models/vision_wasm_internal.js",

@@ -42,9 +42,46 @@ const OPTIONAL_FORMATTED_ENV_VARS: Record<string, (v: string) => boolean> = {
 
 let validated = false;
 
+/**
+ * Is this the `next build` compile step (as opposed to a running server)?
+ *
+ * Next sets NEXT_PHASE while building. This matters because `next build`
+ * imports every route module to collect page data — including
+ * `/api/auth/[...nextauth]`, which imports this file. Throwing there killed
+ * the build with the opaque "Failed to collect page data for
+ * /api/auth/[...nextauth]", even though nothing was actually wrong with the
+ * code: a build machine legitimately may not have runtime secrets.
+ *
+ * Validation still hard-fails at RUNTIME in production, which is where it
+ * protects anything.
+ */
+export function isBuildPhase(): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    // Vercel exposes this during the build container only.
+    process.env.NEXT_IS_EXPORT_WORKER === "1"
+  );
+}
+
+/**
+ * Vercel does not set NEXTAUTH_URL for you, but it does set VERCEL_URL.
+ * Without this, a Vercel deploy that otherwise has every secret configured
+ * still fails validation (and NextAuth builds broken callback URLs).
+ */
+function resolveNextAuthUrlFromVercel(): void {
+  if (process.env.NEXTAUTH_URL) return;
+  const vercelUrl =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercelUrl) {
+    process.env.NEXTAUTH_URL = `https://${vercelUrl}`;
+  }
+}
+
 export function validateEnv(): void {
   if (validated) return; // Only validate once
   validated = true;
+
+  resolveNextAuthUrlFromVercel();
 
   const errors: string[] = [];
 
@@ -68,14 +105,18 @@ export function validateEnv(): void {
     }
   }
 
-  // In production, hard-fail. In dev/test, just warn.
+  // In production, hard-fail at runtime. During the build step and in
+  // dev/test, warn only.
   if (errors.length > 0) {
     const msg =
       `Environment validation failed:\n  - ${errors.join("\n  - ")}\n` +
       `See .env.example for the full list of required variables.`;
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !isBuildPhase()) {
       throw new Error(`FATAL: ${msg}`);
     } else {
+      // `validated` is latched above, but a build-phase warning must not
+      // count as "already validated" for the server that starts afterwards.
+      if (isBuildPhase()) validated = false;
       console.warn(`⚠️  ${msg}`);
     }
   }

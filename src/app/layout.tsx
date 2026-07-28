@@ -52,9 +52,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      // 32px first — browsers pick the smallest adequate size for the tab,
+      // and downscaling the 192 gave a muddy favicon.
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
+    shortcut: [{ url: "/favicon-32.png", sizes: "32x32", type: "image/png" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   manifest: "/manifest.json",

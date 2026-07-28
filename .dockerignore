@@ -30,7 +30,6 @@ examples/
 mini-services/
 skills/
 .claude/
-.z-ai-config/
 Dockerfile
 Caddyfile
 lighthouserc.json

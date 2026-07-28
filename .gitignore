@@ -62,7 +62,6 @@ desktop.ini
 # Project-specific
 local-*
 .claude
-.z-ai-config
 /skills/
 test
 prompt
