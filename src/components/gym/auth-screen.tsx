@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,71 @@ function isSignInSuccess(
  * first poll usually succeeds, which removes the delay entirely; the loop only
  * costs time when the cookie genuinely has not propagated yet.
  */
+/**
+ * Human-readable text for the `error` code NextAuth appends to the sign-in
+ * page after a failed OAuth round-trip.
+ *
+ * `pages.signIn` is "/#/login", so NextAuth redirects to
+ * `/#/login?error=<code>` — the query lands INSIDE the hash fragment, where
+ * neither `useSearchParams` nor the hash router surfaces it. The result was a
+ * silent bounce back to an empty login form with no clue what went wrong.
+ */
+const OAUTH_ERRORS: Record<string, string> = {
+  OAuthSignin: "Could not reach Google. Check your connection and try again.",
+  OAuthCallback:
+    "Google rejected the sign-in. If this keeps happening, the app's redirect URL may not be registered in Google Cloud Console.",
+  OAuthAccountNotLinked:
+    "That email is already registered with a password. Sign in with your password instead.",
+  OAuthCreateAccount: "Could not create an account from your Google profile.",
+  Callback: "Sign-in failed on the way back from Google. Please try again.",
+  AccessDenied: "Access denied — you cancelled the Google sign-in, or the account isn't permitted.",
+  Configuration: "Google sign-in is misconfigured on the server.",
+  Verification: "That sign-in link has expired. Request a new one.",
+};
+
+/**
+ * Pull `error` out of either the real query string or the hash query, since
+ * this app routes on the fragment.
+ *
+ * Captured ONCE per page load: the mount effect scrubs `error` from the URL so
+ * a refresh doesn't resurrect a stale failure, and the snapshot below must stay
+ * referentially stable for `useSyncExternalStore`. A full navigation (including
+ * `signOut`) reloads this module and resets it.
+ */
+let capturedOAuthError: string | null | undefined;
+
+function readOAuthError(): string | null {
+  if (capturedOAuthError !== undefined) return capturedOAuthError;
+  const fromSearch = new URLSearchParams(window.location.search).get("error");
+  const hashQuery = window.location.hash.split("?")[1] ?? "";
+  const fromHash = new URLSearchParams(hashQuery).get("error");
+  capturedOAuthError = fromSearch || fromHash;
+  return capturedOAuthError;
+}
+
+// The URL is external, browser-only state, so it is read through
+// `useSyncExternalStore` rather than assigned into state from an effect —
+// the server snapshot is `null`, which keeps SSR and hydration in agreement.
+// It never changes after capture, so `subscribe` has nothing to listen to.
+const subscribeToNothing = () => () => {};
+const noOAuthErrorOnServer = () => null;
+
+/** Strip `error` from the URL so it doesn't survive a manual retry. */
+function clearOAuthError(): void {
+  const [hashPath, hashQuery] = window.location.hash.split("?");
+  const params = new URLSearchParams(hashQuery ?? "");
+  params.delete("error");
+  const rest = params.toString();
+  const search = new URLSearchParams(window.location.search);
+  search.delete("error");
+  const searchStr = search.toString();
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${searchStr ? `?${searchStr}` : ""}${hashPath}${rest ? `?${rest}` : ""}`
+  );
+}
+
 async function waitForSession(timeoutMs = 3000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -65,6 +130,25 @@ export function AuthScreen({ mode, onBack, onSuccess }: AuthScreenProps) {
   const [demoLoading, setDemoLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Surface an OAuth failure handed back by NextAuth.
+  const oauthErrorCode = useSyncExternalStore(
+    subscribeToNothing,
+    readOAuthError,
+    noOAuthErrorOnServer
+  );
+  const oauthError = oauthErrorCode
+    ? OAUTH_ERRORS[oauthErrorCode] ?? `Sign-in failed (${oauthErrorCode}).`
+    : null;
+
+  // Scrub `error` from the address bar so refreshing doesn't look like a
+  // second failure. Purely a URL side effect — no setState, no re-render.
+  useEffect(() => {
+    if (oauthErrorCode) clearOAuthError();
+  }, [oauthErrorCode]);
+
+  // A fresh attempt's own error wins over the one we arrived with.
+  const displayedError = error ?? oauthError;
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -355,14 +439,14 @@ export function AuthScreen({ mode, onBack, onSuccess }: AuthScreenProps) {
             </div>
 
             <AnimatePresence>
-              {error && (
+              {displayedError && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2"
                 >
-                  {error}
+                  {displayedError}
                 </motion.div>
               )}
             </AnimatePresence>
