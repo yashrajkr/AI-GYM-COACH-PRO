@@ -1,4 +1,5 @@
 import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text } from "@react-email/components";
+import { getSiteUrl } from "@/lib/config/site-url";
 
 interface WeeklySummaryEmailProps {
   name?: string;
@@ -24,6 +25,9 @@ export function WeeklySummaryEmail({
   streak,
 }: WeeklySummaryEmailProps) {
   const firstName = name?.split(" ")[0] || "there";
+  // Rendered server-side by Resend. These links used to be hardcoded to a
+  // domain the project doesn't own, so every CTA in the email was dead.
+  const siteUrl = getSiteUrl();
 
   return (
     <Html>
@@ -39,7 +43,7 @@ export function WeeklySummaryEmail({
                 You didn't work out this week — but that's OK! Tomorrow is a fresh start.
                 Even 5 minutes of bodyweight squats counts.
               </Text>
-              <Button style={button} href="https://aigymcoachpro.com/#/dashboard">
+              <Button style={button} href={`${siteUrl}/#/dashboard`}>
                 Start a Quick Workout →
               </Button>
             </Section>
@@ -58,7 +62,7 @@ export function WeeklySummaryEmail({
                 )}
               </Section>
 
-              <Button style={button} href="https://aigymcoachpro.com/#/analytics">
+              <Button style={button} href={`${siteUrl}/#/analytics`}>
                 See Full Analytics →
               </Button>
             </>

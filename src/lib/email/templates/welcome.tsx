@@ -1,4 +1,5 @@
 import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text } from "@react-email/components";
+import { getSiteUrl } from "@/lib/config/site-url";
 
 interface WelcomeEmailProps {
   name?: string;
@@ -11,6 +12,9 @@ interface WelcomeEmailProps {
  */
 export function WelcomeEmail({ name, email }: WelcomeEmailProps) {
   const firstName = name?.split(" ")[0] || "there";
+  // Rendered server-side by Resend, so the real origin is available here.
+  // This link used to be hardcoded to a domain the project doesn't own.
+  const siteUrl = getSiteUrl();
 
   return (
     <Html>
@@ -32,7 +36,7 @@ export function WelcomeEmail({ name, email }: WelcomeEmailProps) {
             <Text style={listItem}>🔒 <strong>Privacy-first</strong> — your video never leaves your device</Text>
           </Section>
 
-          <Button style={button} href="https://aigymcoachpro.com/#/dashboard">
+          <Button style={button} href={`${siteUrl}/#/dashboard`}>
             Start Your First Workout →
           </Button>
 

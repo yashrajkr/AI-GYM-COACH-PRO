@@ -8,6 +8,7 @@ import { PostHogProvider } from "@/components/posthog-provider";
 import { HydrationSafe } from "@/components/hydration-safe";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ChunkErrorHandler } from "@/components/chunk-error-handler";
+import { getSiteUrl } from "@/lib/config/site-url";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -37,16 +38,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "AI Gym Coach Pro" }],
   creator: "AI Gym Coach Pro",
-  // Absolute base for OG/Twitter image URLs. Hardcoding a domain meant every
-  // preview deployment advertised production's images (and a fork advertised
-  // someone else's site), so resolve it from the environment and fall back to
-  // the canonical domain only as a last resort.
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.NEXT_PUBLIC_VERCEL_URL
-        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-        : "https://aigymcoachpro.com")
-  ),
+  // Absolute base for canonical + OG/Twitter image URLs. See `getSiteUrl`:
+  // this used to prefer NEXT_PUBLIC_VERCEL_URL, which is the per-deployment
+  // host, so canonical changed on every deploy and og:image pointed at a URL
+  // social scrapers may not be able to reach.
+  metadataBase: new URL(getSiteUrl()),
   alternates: {
     canonical: "/",
   },
